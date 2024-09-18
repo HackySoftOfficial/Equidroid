@@ -1,10 +1,10 @@
 name: Release Full
 
 on:
-  workflow_dispatch:
-  pull_request:
+  workflow_dispatch:   # Allows manual triggering
+  push:
     branches:
-      - main
+      - main           # Triggered on push to main branch (after merge)
 
 jobs:
   build:
@@ -52,7 +52,14 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'  # Ensure it only runs for push or manual events
     steps:
+      - name: Download APK Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: VencordDev
+          path: ./artifacts
+
       - name: Create GitHub Release
         uses: actions/create-release@v1
         with:
@@ -68,6 +75,6 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: app/build/outputs/apk/release/app-release.apk
+          asset_path: ./artifacts/app-release.apk
           asset_name: app-release.apk
           asset_content_type: application/vnd.android.package-archive
