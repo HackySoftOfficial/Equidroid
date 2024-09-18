@@ -4,14 +4,14 @@ on:
   workflow_dispatch:   # Allows manual triggering
   push:
     branches:
-      - main           # Triggered on push to main branch (after merge)
+      - main           # Triggered on push to main branch (e.g., after a merge)
 
 jobs:
-  build:
+  build_and_release:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout builds
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Setup JDK 11
@@ -22,7 +22,7 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2.0.10
-      
+
       - name: Setup credentials
         run: |
           echo "Decoding and setting up Keystore..."
@@ -30,7 +30,7 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
-      - name: Build Artifact
+      - name: Build APK
         run: |
           chmod +x ./gradlew
           ./gradlew app:assembleRelease \
@@ -49,23 +49,12 @@ jobs:
           name: VencordDev
           path: app/build/outputs/apk/release/app-release.apk
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'  # Ensure it only runs for push or manual events
-    steps:
-      - name: Download APK Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: VencordDev
-          path: ./artifacts
-
       - name: Create GitHub Release
         uses: actions/create-release@v1
         with:
           tag_name: ${{ github.sha }}
           release_name: "Release for Commit ${{ github.sha }}"
-          body: "Release for commit ${{ github.sha }} merged to main"
+          body: "Release for commit ${{ github.sha }} pushed to main"
           draft: false
           prerelease: false
         env:
@@ -75,6 +64,6 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/app-release.apk
+          asset_path: app/build/outputs/apk/release/app-release.apk
           asset_name: app-release.apk
           asset_content_type: application/vnd.android.package-archive
